@@ -21,6 +21,17 @@ def safe_text(s):
              .replace("’", "'")
              .replace("…", "...")
              .encode("latin1", errors="replace").decode("latin1"))
+# Safe wrapper for multi_cell to avoid FPDF errors
+def safe_multicell(pdf, text, w=0, h=6):
+    txt = safe_text(text)
+    # Break long words so FPDF can render them
+    for line in txt.split("\n"):
+        while len(line) > 100:  # arbitrary max chunk length
+            for chunk in textwrap.wrap(safe_text(line), 100):
+    pdf.multi_cell(w, h, chunk)
+            line = line[100:]
+        for chunk in textwrap.wrap(safe_text(line), 100):
+    pdf.multi_cell(w, h, chunk)
 
 def save_excel(df, filename="parsed_financial_data.xlsx"):
     with io.BytesIO() as buffer:
@@ -100,8 +111,8 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 6, safe_text("Business Summary"), ln=True)
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 6, safe_text(f"Business Name: {context.get('business_name','N/A')}"))
-    pdf.multi_cell(0, 6, safe_text(f"Primary Contact: {context.get('seller_contact','N/A')}"))
+    safe_multicell(pdf, f"Business Name: {context.get('business_name','N/A')}")
+    safe_multicell(pdf, f"Primary Contact: {context.get('seller_contact','N/A')}")
     pdf.ln(4)
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 6, safe_text("Primary Data"), ln=True)
@@ -118,7 +129,7 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0,6, safe_text("Recommended Value & Notes"), ln=True)
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0,6, safe_text(context.get("notes","No notes")))
+    safe_multicell(pdf, context.get("notes","No notes"))
     return pdf.output(dest="S").encode("latin1")
 
 def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
@@ -132,7 +143,7 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     pdf.cell(0, 12, safe_text(f"{context.get('business_name','Company')} — Teaser"), ln=True, align="C")
     pdf.ln(6)
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 8, safe_text(context.get("one_liner","Confidential business opportunity — summary below.")))
+    safe_multicell(pdf, context.get("one_liner","Confidential business opportunity — summary below."))
     pdf.ln(6)
     pdf.cell(0, 6, safe_text(f"Location: {context.get('location','N/A')}"), ln=True)
     pdf.cell(0, 6, safe_text(f"Industry: {context.get('industry','N/A')}"), ln=True)
@@ -152,7 +163,7 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     pdf.cell(0,6,safe_text("Investment Highlights"), ln=True)
     pdf.set_font("Arial", size=11)
     for h in context.get("highlights", ["Recurring revenue", "Strong margins", "Scalable operations"]):
-        pdf.multi_cell(0,6,safe_text(f"- {h}"))
+       safe_multicell(pdf, f"- {h}")
 
     # Market & comps summary
     pdf.add_page()
@@ -160,7 +171,7 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     pdf.cell(0,8,safe_text("Market Overview & Comps"), ln=True)
     pdf.set_font("Arial", size=11)
     mr = context.get("market_research", {})
-    pdf.multi_cell(0,6, safe_text(f"Industry multiples: {mr.get('Industry_multiples',{})}"))
+    safe_multicell(pdf, f"Industry multiples: {mr.get('Industry_multiples',{})}")
     comps = mr.get("RealEstate_comps", [])
     pdf.ln(2)
     if comps:
@@ -175,7 +186,7 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     pdf.set_font("Arial","B",14)
     pdf.cell(0,8,safe_text("Buyer Fit / Next Steps"), ln=True)
     pdf.set_font("Arial", size=11)
-    pdf.multi_cell(0,6,safe_text("This teaser is intended for qualified buyers only. Contact broker to receive full CIM and data room access."))
+    safe_multicell(pdf, "This teaser is intended for qualified buyers only. Contact broker to receive full CIM and data room access.")
     pdf.ln(4)
     pdf.cell(0,6, safe_text(f"Broker Contact: {context.get('broker_contact','broker@example.com')}"), ln=True)
 
@@ -274,7 +285,7 @@ with col1:
                 pdf.cell(0,6, "Seller Q&A", ln=True)
                 pdf.ln(4)
                 for i,q in enumerate(qs):
-                    pdf.multi_cell(0,6, safe_text(f"Q{i+1}. {q}"))
+                   safe_multicell(pdf, f"Q{i+1}. {q}")
                 pdf_bytes = pdf.output(dest="S").encode("latin1")
                 st.markdown(download_link(pdf_bytes, "general_questions.pdf", "Download general_questions.pdf"), unsafe_allow_html=True)
 
@@ -463,7 +474,8 @@ if view == "BrokerIQ Dashboard":
         pdf.ln(4)
         for i,r in demo_deals.iterrows():
             pdf.set_font("Arial","",11)
-            pdf.multi_cell(0,6, safe_text(f"{r['Business']} — Valuation: ${int(r['Valuation']):,} — Status: {r['Status']} — Matched Buyers: {r['Matched Buyers']}"))
+           safe_multicell(pdf,f"{r['Business']} — Valuation: ${int(r['Valuation']):,} — Status: {r['Status']} — Matched Buyers: {r['Matched Buyers']}")
+
         st.markdown(download_link(pdf.output(dest="S").encode("latin1"), "BrokerIQ_Portfolio_Report.pdf", "Download Portfolio Report"), unsafe_allow_html=True)
 
 elif view == "DealReady (SMB)":
