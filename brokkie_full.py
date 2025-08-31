@@ -100,29 +100,38 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 6, safe_text("Business Summary"), ln=True)
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 6, safe_text(f"Business Name: {context.get('business_name','N/A')}"))
-    pdf.multi_cell(0, 6, safe_text(f"Primary Contact: {context.get('seller_contact','N/A')}"))
+    
+    # FIXED: Use cell() instead of multi_cell() for single lines
+    pdf.cell(0, 6, safe_text(f"Business Name: {context.get('business_name','N/A')}"), ln=True)
+    pdf.cell(0, 6, safe_text(f"Primary Contact: {context.get('seller_contact','N/A')}"), ln=True)
+    
     pdf.ln(4)
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 6, safe_text("Primary Data"), ln=True)
     pdf.set_font("Arial", size=10)
     for k,v in context.get("primary_data", {}).items():
-        pdf.cell(0,6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
+        pdf.cell(0, 6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
     pdf.ln(4)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0,6, safe_text("Valuation Models Summary"), ln=True)
+    pdf.cell(0, 6, safe_text("Valuation Models Summary"), ln=True)
     pdf.set_font("Arial", size=10)
     for k,v in context.get("valuations", {}).items():
-        pdf.cell(0,6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
+        pdf.cell(0, 6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
     pdf.ln(6)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0,6, safe_text("Recommended Value & Notes"), ln=True)
+    pdf.cell(0, 6, safe_text("Recommended Value & Notes"), ln=True)
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0,6, safe_text(context.get("notes","No notes")))
+    
+    # Only use multi_cell for potentially long text (notes)
+    notes = context.get("notes", "No notes")
+    if len(notes) > 80:  # Use multi_cell for longer text
+        pdf.multi_cell(0, 6, safe_text(notes))
+    else:  # Use cell for shorter text
+        pdf.cell(0, 6, safe_text(notes), ln=True)
+    
     return pdf.output(dest="S").encode("latin1")
 
 def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
-    # Multi-page CIM-style teaser (mock)
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=12)
 
@@ -131,8 +140,14 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     pdf.set_font("Arial", "B", 22)
     pdf.cell(0, 12, safe_text(f"{context.get('business_name','Company')} — Teaser"), ln=True, align="C")
     pdf.ln(6)
-    pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 8, safe_text(context.get("one_liner","Confidential business opportunity — summary below.")))
+    
+    # FIXED: Use multi_cell only for potentially long text
+    one_liner = context.get("one_liner", "Confidential business opportunity — summary below.")
+    if len(one_liner) > 60:
+        pdf.multi_cell(0, 8, safe_text(one_liner))
+    else:
+        pdf.cell(0, 8, safe_text(one_liner), ln=True)
+    
     pdf.ln(6)
     pdf.cell(0, 6, safe_text(f"Location: {context.get('location','N/A')}"), ln=True)
     pdf.cell(0, 6, safe_text(f"Industry: {context.get('industry','N/A')}"), ln=True)
@@ -144,40 +159,52 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     pdf.cell(0, 8, safe_text("Financial Snapshot"), ln=True)
     pdf.set_font("Arial", size=11)
     for k,v in context.get("primary_data", {}).items():
-        pdf.cell(0,6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
+        pdf.cell(0, 6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
 
     # Highlights
     pdf.ln(4)
-    pdf.set_font("Arial","B",12)
-    pdf.cell(0,6,safe_text("Investment Highlights"), ln=True)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 6, safe_text("Investment Highlights"), ln=True)
     pdf.set_font("Arial", size=11)
     for h in context.get("highlights", ["Recurring revenue", "Strong margins", "Scalable operations"]):
-        pdf.multi_cell(0,6,safe_text(f"- {h}"))
+        pdf.multi_cell(0, 6, safe_text(f"- {h}"))
 
     # Market & comps summary
     pdf.add_page()
-    pdf.set_font("Arial","B",14)
-    pdf.cell(0,8,safe_text("Market Overview & Comps"), ln=True)
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 8, safe_text("Market Overview & Comps"), ln=True)
     pdf.set_font("Arial", size=11)
     mr = context.get("market_research", {})
-    pdf.multi_cell(0,6, safe_text(f"Industry multiples: {mr.get('Industry_multiples',{})}"))
+    
+    # FIXED: Handle potentially long text
+    industry_text = f"Industry multiples: {mr.get('Industry_multiples', {})}"
+    if len(industry_text) > 80:
+        pdf.multi_cell(0, 6, safe_text(industry_text))
+    else:
+        pdf.cell(0, 6, safe_text(industry_text), ln=True)
+    
     comps = mr.get("RealEstate_comps", [])
     pdf.ln(2)
     if comps:
-        pdf.set_font("Arial","B",12)
-        pdf.cell(0,6,safe_text("Comps (mock):"), ln=True)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 6, safe_text("Comps (mock):"), ln=True)
         pdf.set_font("Arial", size=11)
         for c in comps:
-            pdf.cell(0,6, safe_text(f"{c.get('address','N/A')} - {format_usd(c.get('value',0))}"), ln=True)
+            comp_text = f"{c.get('address','N/A')} - {format_usd(c.get('value',0))}"
+            pdf.cell(0, 6, safe_text(comp_text), ln=True)
 
     # Buyer fit and contact
     pdf.add_page()
-    pdf.set_font("Arial","B",14)
-    pdf.cell(0,8,safe_text("Buyer Fit / Next Steps"), ln=True)
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 8, safe_text("Buyer Fit / Next Steps"), ln=True)
     pdf.set_font("Arial", size=11)
-    pdf.multi_cell(0,6,safe_text("This teaser is intended for qualified buyers only. Contact broker to receive full CIM and data room access."))
+    
+    # FIXED: Use multi_cell for longer text
+    disclaimer = "This teaser is intended for qualified buyers only. Contact broker to receive full CIM and data room access."
+    pdf.multi_cell(0, 6, safe_text(disclaimer))
+    
     pdf.ln(4)
-    pdf.cell(0,6, safe_text(f"Broker Contact: {context.get('broker_contact','broker@example.com')}"), ln=True)
+    pdf.cell(0, 6, safe_text(f"Broker Contact: {context.get('broker_contact','broker@example.com')}"), ln=True)
 
     return pdf.output(dest="S").encode("latin1")
 
