@@ -29,11 +29,16 @@ def safe_text(s):
 
 def safe_multicell(pdf, text, w=0, h=6, max_chars=100):
     """
-    Safely write text in FPDF multi_cell, splitting long lines into smaller chunks.
+    Safely write text in FPDF multi_cell, splitting long lines and breaking long words if needed.
     """
-    for line in text.split("\n"):
-        for chunk in textwrap.wrap(safe_text(line), max_chars):
-            pdf.multi_cell(w, h, chunk)
+    txt = safe_text(text)
+    for line in txt.split("\n"):
+        # Wrap the line at max_chars first
+        for chunk in textwrap.wrap(line, max_chars, break_long_words=True, replace_whitespace=False):
+            # Force-break any remaining very long "words"
+            while len(chunk) > 0:
+                pdf.multi_cell(w, h, chunk[:max_chars])
+                chunk = chunk[max_chars:]
 
 # ---------- Example Usage ----------
 # txt = "Very long text that might break FPDF rendering if not split properly..."
