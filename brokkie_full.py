@@ -291,16 +291,27 @@ with col1:
     elif step == 5:
         st.header("Step 5 — Excel Tables Adjustment (Manual)")
         st.info("Download parsed Excel, edit offline, and re-upload if needed.")
+        
+        # Check if we have the parsed Excel data
         if st.session_state.parsed_xlsx is not None:
             st.markdown(download_link(st.session_state.parsed_xlsx, "parsed_financial_data.xlsx", "Download parsed_financial_data.xlsx"), unsafe_allow_html=True)
+            
+            # Also show a preview of the current data
+            st.write("Current parsed data:")
+            st.dataframe(st.session_state.parsed_df)
         else:
-            st.info("No parsed Excel file available. Complete Step 1 first.")
+            st.info("No parsed Excel file available. Complete Step 1 first to generate the Excel file.")
+        
         uploaded_fix = st.file_uploader("Upload corrected Excel (optional)", type=["xlsx"])
         if uploaded_fix:
             try:
                 df_fix = pd.read_excel(uploaded_fix)
                 st.session_state.parsed_df = df_fix
+                # Update the Excel bytes with the corrected data
+                excel_bytes = save_excel(df_fix)
+                st.session_state.parsed_xlsx = excel_bytes
                 st.success("Corrected Excel uploaded and accepted.")
+                st.dataframe(df_fix)
             except Exception as e:
                 st.error("Could not read uploaded file. Make sure it's a valid XLSX.")
 
@@ -491,4 +502,4 @@ elif view == "DealReady (SMB)":
 
 # Footer quick help
 st.sidebar.markdown("---")
-st.sidebar.markdown("Prototype by Ruslan — Simulated outputs. Connect AI models / parsers to replace mock computations.")
+st.sidebar.markmarkdown("Prototype by Ruslan — Simulated outputs. Connect AI models / parsers to replace mock computations.")
