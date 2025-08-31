@@ -1,4 +1,4 @@
-# brokkie_full.py
+# brokkie_full.py (Helpers section)
 import streamlit as st
 import pandas as pd
 import io
@@ -7,11 +7,16 @@ from fpdf import FPDF
 from datetime import datetime
 import base64
 import random
+import textwrap  # <-- import at top
 
 st.set_page_config(page_title="Brokkie - Full 12-step Valuation Prototype", layout="wide")
 
 # ---------- Helpers ----------
+
 def safe_text(s):
+    """
+    Clean text to avoid FPDF encoding/rendering errors.
+    """
     if not s:
         return ""
     return (s.replace("—", "-")
@@ -21,19 +26,18 @@ def safe_text(s):
              .replace("’", "'")
              .replace("…", "...")
              .encode("latin1", errors="replace").decode("latin1"))
-# Safe wrapper for multi_cell to avoid FPDF errors
-def safe_multicell(pdf, text, w=0, h=6):
-    txt = safe_text(text)
-import textwrap
-# Helper to safely split long text into chunks for FPDF
+
 def safe_multicell(pdf, text, w=0, h=6, max_chars=100):
+    """
+    Safely write text in FPDF multi_cell, splitting long lines into smaller chunks.
+    """
     for line in text.split("\n"):
         for chunk in textwrap.wrap(safe_text(line), max_chars):
             pdf.multi_cell(w, h, chunk)
-# Example usage:
-txt = "Very long text that might break FPDF rendering if not split properly..."
-safe_multicell(pdf, txt)
 
+# ---------- Example Usage ----------
+# txt = "Very long text that might break FPDF rendering if not split properly..."
+# safe_multicell(pdf, txt)
 
 def save_excel(df, filename="parsed_financial_data.xlsx"):
     with io.BytesIO() as buffer:
