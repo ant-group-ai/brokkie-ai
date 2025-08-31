@@ -502,4 +502,4 @@ elif view == "DealReady (SMB)":
 
 # Footer quick help
 st.sidebar.markdown("---")
-st.sidebar.markmarkdown("Prototype by Ruslan — Simulated outputs. Connect AI models / parsers to replace mock computations.")
+st.sidebar.markdown("Prototype by Ruslan — Simulated outputs. Connect AI models / parsers to replace mock computations.")
