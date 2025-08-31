@@ -467,17 +467,18 @@ if view == "BrokerIQ Dashboard":
     st.subheader("Deal Analytics (mock)")
     st.line_chart({"Deal Value":[250000,120000,500000],"Matched Buyers":[3,0,2]})
     if st.button("Export Portfolio Report (Demo)"):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial","B",12)
-        pdf.cell(0,6,"BrokerIQ Portfolio Report (Demo)", ln=True)
-        pdf.ln(4)
-        for i,r in demo_deals.iterrows():
-            pdf.set_font("Arial","",10)
-            pdf.multi_cell(180, 6, f"{r['Business']} — Valuation: ${int(r['Valuation']):,} — Status: {r['Status']} — Matched Buyers: {r['Matched Buyers']}")
-        pdf_bytes = pdf.output(dest="S")
-        st.markdown(download_link(pdf_bytes, "BrokerIQ_Portfolio_Report.pdf", "Download Portfolio Report"), unsafe_allow_html=True)
-
+       pdf = FPDF()
+       pdf.add_page()
+       pdf.set_font("Arial","B",12)
+       pdf.cell(0,6,safe_text("BrokerIQ Portfolio Report (Demo)"), ln=True)
+       pdf.ln(4)
+       for i,r in demo_deals.iterrows():
+           pdf.set_font("Arial","",10)
+        # FIXED: Use safe_text on the entire string
+           text = safe_text(f"{r['Business']} - Valuation: ${int(r['Valuation']):,} - Status: {r['Status']} - Matched Buyers: {r['Matched Buyers']}")
+           pdf.multi_cell(180, 6, text)
+       pdf_bytes = pdf.output(dest="S")
+       st.markdown(download_link(pdf_bytes, "BrokerIQ_Portfolio_Report.pdf", "Download Portfolio Report"), unsafe_allow_html=True)
 elif view == "DealReady (SMB)":
     st.header("DealReady — SMB Owner Tool (Demo)")
     st.write("Enter your business data to get an instant estimate and exit-prep suggestions.")
@@ -498,7 +499,6 @@ elif view == "DealReady (SMB)":
         }
         pdf_bytes = generate_final_pdf(owner_ctx)
         st.markdown(download_link(pdf_bytes, f"{name}_DealReady_Report.pdf", "Download Owner Report"), unsafe_allow_html=True)
-
 # Footer quick help
 st.sidebar.markdown("---")
 st.sidebar.markdown("Prototype by Ruslan — Simulated outputs. Connect AI models / parsers to replace mock computations.")
