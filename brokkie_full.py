@@ -24,14 +24,18 @@ def safe_text(s):
 # Safe wrapper for multi_cell to avoid FPDF errors
 def safe_multicell(pdf, text, w=0, h=6):
     txt = safe_text(text)
-    # Break long words so FPDF can render them
-    for line in txt.split("\n"):
-        while len(line) > 100:  # arbitrary max chunk length
-            for chunk in textwrap.wrap(safe_text(line), 100):
-    pdf.multi_cell(w, h, chunk)
-            line = line[100:]
-        for chunk in textwrap.wrap(safe_text(line), 100):
-    pdf.multi_cell(w, h, chunk)
+  import textwrap
+
+# Helper to safely split long text into chunks for FPDF
+def safe_multicell(pdf, text, w=0, h=6, max_chars=100):
+    for line in text.split("\n"):
+        for chunk in textwrap.wrap(safe_text(line), max_chars):
+            pdf.multi_cell(w, h, chunk)
+
+# Example usage:
+txt = "Very long text that might break FPDF rendering if not split properly..."
+safe_multicell(pdf, txt)
+
 
 def save_excel(df, filename="parsed_financial_data.xlsx"):
     with io.BytesIO() as buffer:
