@@ -1,4 +1,4 @@
-# brokkie_full.py (Helpers section)
+# brokkie_full.py
 import streamlit as st
 import pandas as pd
 import io
@@ -7,14 +7,11 @@ from fpdf import FPDF
 from datetime import datetime
 import base64
 import random
-import textwrap  # <-- import at top
+import textwrap
 
 st.set_page_config(page_title="Brokkie - Full 12-step Valuation Prototype", layout="wide")
 
 # ---------- Helpers ----------
-
-import textwrap
-
 def safe_text(s: str) -> str:
     """Clean problematic Unicode for FPDF (latin1 only)."""
     if not s:
@@ -26,17 +23,15 @@ def safe_text(s: str) -> str:
          .replace("”", '"')
          .replace("’", "'")
          .replace("…", "...")
-         .encode("latin1", errors="replace")  # '?' for unencodable chars
+         .encode("latin1", errors="replace")
          .decode("latin1")
     )
 
 def safe_multicell(pdf, text: str, w=None, h=6, max_chars=120, align="L"):
-    """Safe wrapper for FPDF.multi_cell with width handling + wrapping."""
+    """Safe wrapper for FPDF.multi_cell with wrapping."""
     txt = safe_text(text)
-
-    if w is None:  # default width = page minus margins
+    if w is None:
         w = pdf.w - pdf.l_margin - pdf.r_margin
-
     for line in txt.split("\n"):
         for chunk in textwrap.wrap(line, max_chars, break_long_words=True):
             pdf.multi_cell(w, h, chunk, align=align)
@@ -45,20 +40,18 @@ def save_excel(df, filename="parsed_financial_data.xlsx"):
     with io.BytesIO() as buffer:
         with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
             df.to_excel(writer, index=False, sheet_name="Financials")
-        data = buffer.getvalue()
-    return data
+        return buffer.getvalue()
 
 def download_link(byte_data, filename, label="Download"):
     b64 = base64.b64encode(byte_data).decode()
     return f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">{label}</a>'
 
 def generate_parsed_financials(uploaded_files):
-    """Mock parsed financials generator."""
     revenue = random.randint(200_000, 3_000_000)
     cogs = int(revenue * random.uniform(0.2, 0.6))
     expenses = int(revenue * random.uniform(0.1, 0.3))
     net_income = revenue - cogs - expenses
-    sde = net_income + int(expenses * 0.25)  # simplified add-backs
+    sde = net_income + int(expenses * 0.25)
     df = pd.DataFrame([
         {"Metric": "TTM Revenue", "Value": revenue},
         {"Metric": "COGS", "Value": cogs},
@@ -69,7 +62,6 @@ def generate_parsed_financials(uploaded_files):
     return df
 
 def generate_questions(parsed_preview):
-    """Mocked smart Q&A generator."""
     return [
         "Provide explanation for revenue seasonality (if any).",
         "List one-time expenses in the last 12 months.",
@@ -80,16 +72,15 @@ def generate_questions(parsed_preview):
     ]
 
 def compute_valuation_models(financials_dict):
-    """Simple valuation mock."""
     revenue = financials_dict.get("TTM Revenue", 0)
     net_income = financials_dict.get("Net Income", 0)
     sde = financials_dict.get("SDE (est)", 0)
+    assets = financials_dict.get("Assets", 0)
 
     BE = revenue * 0.8
-    APEEV = max((sde * 4) + financials_dict.get("Assets", 0), BE * 0.6)
+    APEEV = max((sde * 4) + assets, BE * 0.6)
     IVB = net_income * 6
     CMA = revenue * random.uniform(0.6, 1.2)
-
     return {"BE": BE, "APEEV": APEEV, "IVB": IVB, "CMA": CMA}
 
 def format_usd(x):
@@ -102,14 +93,12 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-
     page_width = pdf.w - pdf.l_margin - pdf.r_margin
 
     # Title
     pdf.set_font("Arial", "B", 16)
     safe_multicell(pdf, "Final Valuation Report", w=page_width, h=8)
     pdf.set_font("Arial", size=10)
-    pdf.ln(4)
     safe_multicell(pdf, f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}", w=page_width)
     pdf.ln(6)
 
@@ -126,7 +115,10 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     safe_multicell(pdf, "Primary Data", w=page_width)
     pdf.set_font("Arial", size=10)
     for k, v in context.get("primary_data", {}).items():
-        safe_multicell(pdf, f"{k}: {format_usd(v)}", w=page_width)
+        if isinstance(v, (int,float)):
+            safe_multicell(pdf, f"{k}: {format_usd(v)}", w=page_width)
+        else:
+            safe_multicell(pdf, f"{k}: {v}", w=page_width)
     pdf.ln(4)
 
     # Valuation Summary
@@ -145,12 +137,11 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     safe_multicell(pdf, notes, w=page_width)
 
     out = pdf.output(dest="S")
-    if isinstance(out, str):  # fpdf legacy behavior
+    if isinstance(out, str):
         out = out.encode("latin1")
     return out
 
 def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
-    """Multi-page CIM-style teaser (mock)."""
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=12)
     page_width = pdf.w - pdf.l_margin - pdf.r_margin
@@ -210,7 +201,7 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     safe_multicell(pdf, f"Broker Contact: {context.get('broker_contact','broker@example.com')}", w=page_width)
 
     out = pdf.output(dest="S")
-    if isinstance(out, str):  # fpdf legacy behavior
+    if isinstance(out, str):
         out = out.encode("latin1")
     return out
 
