@@ -138,12 +138,12 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     # Cover / Teaser page
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, safe_text(f"{context.get('business_name','Company')} — Teaser"), ln=True, align="C")
+    pdf.cell(0, 10, safe_text(f"{context.get('business_name','Company')} - Teaser"), ln=True, align="C")
     pdf.ln(4)
     
-    one_liner = context.get("one_liner", "Confidential business opportunity — summary below.")
+    one_liner = context.get("one_liner", "Confidential business opportunity - summary below.")
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 6, safe_text(one_liner))
+    pdf.multi_cell(180, 6, safe_text(one_liner))  # Fixed width
     
     pdf.ln(4)
     pdf.cell(0, 6, safe_text(f"Location: {context.get('location','N/A')}"), ln=True)
@@ -164,7 +164,7 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     pdf.cell(0, 6, safe_text("Investment Highlights"), ln=True)
     pdf.set_font("Arial", size=10)
     for h in context.get("highlights", ["Recurring revenue", "Strong margins", "Scalable operations"]):
-        pdf.multi_cell(0, 6, safe_text(f"- {h}"))
+        pdf.multi_cell(180, 6, safe_text(f"- {h}"))  # Fixed width
 
     return pdf.output(dest="S")
 # ---------- App state init ----------
