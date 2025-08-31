@@ -474,13 +474,20 @@ if view == "BrokerIQ Dashboard":
         pdf.set_font("Arial","B",14)
         pdf.cell(0,6,"BrokerIQ Portfolio Report (Demo)", ln=True)
         pdf.ln(4)
-       for i, r in demo_deals.iterrows():
+        for i, r in demo_deals.iterrows():
            pdf.set_font("Arial", "", 11)
            safe_multicell(
                pdf,
                f"{r['Business']} — Valuation: ${int(r['Valuation']):,} — Status: {r['Status']} — Matched Buyers: {r['Matched Buyers']}"
            )
-        st.markdown(download_link(pdf.output(dest="S").encode("latin1"), "BrokerIQ_Portfolio_Report.pdf", "Download Portfolio Report"), unsafe_allow_html=True)
+        st.markdown(
+            download_link(
+                pdf.output(dest="S").encode("latin1"),
+                "BrokerIQ_Portfolio_Report.pdf",
+                "Download Portfolio Report"
+            ),
+            unsafe_allow_html=True
+        )
 
 elif view == "DealReady (SMB)":
     st.header("DealReady — SMB Owner Tool (Demo)")
