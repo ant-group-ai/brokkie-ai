@@ -28,14 +28,11 @@ def safe_text(s):
              .encode("latin1", errors="replace").decode("latin1"))
 
 def safe_multicell(pdf, text, w=0, h=6, max_chars=100):
-    """
-    Safely write text in FPDF multi_cell, splitting long lines and breaking long words if needed.
-    """
     txt = safe_text(text)
+    if w == 0:
+        w = pdf.w - pdf.l_margin - pdf.r_margin
     for line in txt.split("\n"):
-        # Wrap the line at max_chars first
         for chunk in textwrap.wrap(line, max_chars, break_long_words=True, replace_whitespace=False):
-            # Force-break any remaining very long "words"
             while len(chunk) > 0:
                 pdf.multi_cell(w, h, chunk[:max_chars])
                 chunk = chunk[max_chars:]
