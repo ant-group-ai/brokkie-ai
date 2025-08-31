@@ -144,7 +144,10 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     notes = context.get("notes", "No notes")
     safe_multicell(pdf, notes, w=page_width)
 
-    return pdf.output(dest="S").encode("latin1")
+    out = pdf.output(dest="S")
+    if isinstance(out, str):  # fpdf legacy behavior
+        out = out.encode("latin1")
+    return out
 
 def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     """Multi-page CIM-style teaser (mock)."""
@@ -206,7 +209,10 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     pdf.ln(4)
     safe_multicell(pdf, f"Broker Contact: {context.get('broker_contact','broker@example.com')}", w=page_width)
 
-    return pdf.output(dest="S").encode("latin1")
+    out = pdf.output(dest="S")
+    if isinstance(out, str):  # fpdf legacy behavior
+        out = out.encode("latin1")
+    return out
 
 # ---------- App state init ----------
 if "step" not in st.session_state:
