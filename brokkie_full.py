@@ -14,18 +14,18 @@ st.set_page_config(page_title="Brokkie - Full 12-step Valuation Prototype", layo
 # ---------- Helpers ----------
 
 def safe_text(s):
-    """
-    Clean text to avoid FPDF encoding/rendering errors.
-    """
     if not s:
         return ""
-    return (s.replace("—", "-")
-             .replace("–", "-")
-             .replace("“", '"')
-             .replace("”", '"')
-             .replace("’", "'")
-             .replace("…", "...")
-             .encode("latin1", errors="replace").decode("latin1"))
+    return (
+        s.replace("—", "-")
+         .replace("–", "-")
+         .replace("“", '"')
+         .replace("”", '"')
+         .replace("’", "'")
+         .replace("…", "...")
+         .encode("latin1", errors="replace")  # replaces unencodable chars with '?'
+         .decode("latin1")
+    )
 
 def safe_multicell(pdf, text, w=0, h=6, max_chars=100):
     txt = safe_text(text)
