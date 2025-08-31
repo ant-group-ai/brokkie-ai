@@ -200,6 +200,16 @@ if "valuations" not in st.session_state:
     st.session_state.valuations = {}
 if "business_meta" not in st.session_state:
     st.session_state.business_meta = {"name":"Demo Business", "location":"Seattle, WA", "industry":"Service"}
+if "primary_data" not in st.session_state:
+    st.session_state.primary_data = {}
+if "parsed_xlsx" not in st.session_state:
+    st.session_state.parsed_xlsx = None
+if "inventory" not in st.session_state:
+    st.session_state.inventory = None
+if "real_estate_files" not in st.session_state:
+    st.session_state.real_estate_files = []
+if "final_pdf" not in st.session_state:
+    st.session_state.final_pdf = None
 
 # ---------- Layout ----------
 st.title("Brokkie — 12-Step Valuation Workflow Prototype")
