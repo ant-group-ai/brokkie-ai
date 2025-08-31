@@ -97,37 +97,37 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 8, "Final Valuation Report", ln=True)
+    pdf.cell(0, 8, safe_text("Final Valuation Report"), ln=True)
     pdf.set_font("Arial", size=10)
     pdf.ln(4)
-    pdf.cell(0, 6, f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}", ln=True)
+    pdf.cell(0, 6, safe_text(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"), ln=True)
     pdf.ln(6)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, "Business Summary", ln=True)
+    pdf.cell(0, 6, safe_text("Business Summary"), ln=True)
     pdf.set_font("Arial", size=10)
     
-    pdf.cell(0, 6, f"Business Name: {context.get('business_name','N/A')}", ln=True)
-    pdf.cell(0, 6, f"Primary Contact: {context.get('seller_contact','N/A')}", ln=True)
+    pdf.cell(0, 6, safe_text(f"Business Name: {context.get('business_name','N/A')}"), ln=True)
+    pdf.cell(0, 6, safe_text(f"Primary Contact: {context.get('seller_contact','N/A')}"), ln=True)
     
     pdf.ln(4)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, "Primary Data", ln=True)
+    pdf.cell(0, 6, safe_text("Primary Data"), ln=True)
     pdf.set_font("Arial", size=10)
     for k, v in context.get("primary_data", {}).items():
-        pdf.cell(0, 6, f"{k}: {format_usd(v)}", ln=True)
+        pdf.cell(0, 6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
     pdf.ln(4)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, "Valuation Models Summary", ln=True)
+    pdf.cell(0, 6, safe_text("Valuation Models Summary"), ln=True)
     pdf.set_font("Arial", size=10)
     for k, v in context.get("valuations", {}).items():
-        pdf.cell(0, 6, f"{k}: {format_usd(v)}", ln=True)
+        pdf.cell(0, 6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
     pdf.ln(6)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, "Recommended Value & Notes", ln=True)
+    pdf.cell(0, 6, safe_text("Recommended Value & Notes"), ln=True)
     pdf.set_font("Arial", size=10)
     
     notes = context.get("notes", "No notes")
-    pdf.multi_cell(0, 6, notes)
+    pdf.multi_cell(0, 6, safe_text(notes))
     
     return pdf.output(dest="S")
 
@@ -138,36 +138,35 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     # Cover / Teaser page
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, f"{context.get('business_name','Company')} — Teaser", ln=True, align="C")
+    pdf.cell(0, 10, safe_text(f"{context.get('business_name','Company')} — Teaser"), ln=True, align="C")
     pdf.ln(4)
     
     one_liner = context.get("one_liner", "Confidential business opportunity — summary below.")
     pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 6, one_liner)
+    pdf.multi_cell(0, 6, safe_text(one_liner))
     
     pdf.ln(4)
-    pdf.cell(0, 6, f"Location: {context.get('location','N/A')}", ln=True)
-    pdf.cell(0, 6, f"Industry: {context.get('industry','N/A')}", ln=True)
-    pdf.cell(0, 6, f"Est. Revenue (TTM): {format_usd(context.get('primary_data',{}).get('TTM Revenue',0))}", ln=True)
+    pdf.cell(0, 6, safe_text(f"Location: {context.get('location','N/A')}"), ln=True)
+    pdf.cell(0, 6, safe_text(f"Industry: {context.get('industry','N/A')}"), ln=True)
+    pdf.cell(0, 6, safe_text(f"Est. Revenue (TTM): {format_usd(context.get('primary_data',{}).get('TTM Revenue',0))}"), ln=True)
 
     # Financial snapshot
     pdf.add_page()
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, "Financial Snapshot", ln=True)
+    pdf.cell(0, 8, safe_text("Financial Snapshot"), ln=True)
     pdf.set_font("Arial", size=10)
     for k, v in context.get("primary_data", {}).items():
-        pdf.cell(0, 6, f"{k}: {format_usd(v)}", ln=True)
+        pdf.cell(0, 6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
 
     # Highlights
     pdf.ln(4)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, "Investment Highlights", ln=True)
+    pdf.cell(0, 6, safe_text("Investment Highlights"), ln=True)
     pdf.set_font("Arial", size=10)
     for h in context.get("highlights", ["Recurring revenue", "Strong margins", "Scalable operations"]):
-        pdf.multi_cell(0, 6, f"- {h}")
+        pdf.multi_cell(0, 6, safe_text(f"- {h}"))
 
     return pdf.output(dest="S")
-
 # ---------- App state init ----------
 if "step" not in st.session_state:
     st.session_state.step = 1
