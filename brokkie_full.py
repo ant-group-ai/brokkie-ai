@@ -30,9 +30,14 @@ def save_excel(df, filename="parsed_financial_data.xlsx"):
     return data
 
 def download_link(byte_data, filename, label="Download"):
-    b64 = base64.b64encode(byte_data).decode()
-    href = f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">{label}</a>'
-    return href
+    if byte_data is None:
+        return f'<span style="color: red;">Error: No data to download</span>'
+    try:
+        b64 = base64.b64encode(byte_data).decode()
+        href = f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">{label}</a>'
+        return href
+    except Exception as e:
+        return f'<span style="color: red;">Error generating download link: {str(e)}</span>'
 
 def generate_parsed_financials(uploaded_files):
     # Create a mocked parsed_financial_data.xlsx based on uploaded files
@@ -132,7 +137,7 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
 
     # Cover / Teaser page
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)  # Reduced font size
+    pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 10, f"{context.get('business_name','Company')} — Teaser", ln=True, align="C")
     pdf.ln(4)
     
@@ -230,7 +235,8 @@ with col1:
             st.session_state.parsed_df = parsed
             excel_bytes = save_excel(parsed)
             st.session_state.parsed_xlsx = excel_bytes
-            st.markdown(download_link(excel_bytes, "parsed_financial_data.xlsx", "Download parsed_financial_data.xlsx"), unsafe_allow_html=True)
+            if excel_bytes:
+                st.markdown(download_link(excel_bytes, "parsed_financial_data.xlsx", "Download parsed_financial_data.xlsx"), unsafe_allow_html=True)
             st.dataframe(parsed)
 
     # ---------------- STEP 2: Confirm / Correct Primary Data ----------------
@@ -262,12 +268,11 @@ with col1:
             if st.button("Export Questions (PDF)"):
                 pdf = FPDF()
                 pdf.add_page()
-                pdf.set_font("Arial", size=10)  # Reduced font size
+                pdf.set_font("Arial", size=10)
                 pdf.cell(0, 6, "Seller Q&A", ln=True)
                 pdf.ln(4)
                 for i,q in enumerate(qs):
-                    # FIXED: Use multi_cell with proper width
-                    pdf.multi_cell(180, 6, f"Q{i+1}. {q}")  # Specify width instead of 0
+                    pdf.multi_cell(180, 6, f"Q{i+1}. {q}")
                     pdf.ln(2)
                 pdf_bytes = pdf.output(dest="S")
                 st.markdown(download_link(pdf_bytes, "general_questions.pdf", "Download general_questions.pdf"), unsafe_allow_html=True)
@@ -286,8 +291,10 @@ with col1:
     elif step == 5:
         st.header("Step 5 — Excel Tables Adjustment (Manual)")
         st.info("Download parsed Excel, edit offline, and re-upload if needed.")
-        if "parsed_xlsx" in st.session_state:
+        if st.session_state.parsed_xlsx is not None:
             st.markdown(download_link(st.session_state.parsed_xlsx, "parsed_financial_data.xlsx", "Download parsed_financial_data.xlsx"), unsafe_allow_html=True)
+        else:
+            st.info("No parsed Excel file available. Complete Step 1 first.")
         uploaded_fix = st.file_uploader("Upload corrected Excel (optional)", type=["xlsx"])
         if uploaded_fix:
             try:
