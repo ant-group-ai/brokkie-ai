@@ -13,7 +13,10 @@ st.set_page_config(page_title="Brokkie - Full 12-step Valuation Prototype", layo
 
 # ---------- Helpers ----------
 
-def safe_text(s):
+import textwrap
+
+def safe_text(s: str) -> str:
+    """Clean problematic Unicode for FPDF (latin1 only)."""
     if not s:
         return ""
     return (
@@ -23,23 +26,20 @@ def safe_text(s):
          .replace("”", '"')
          .replace("’", "'")
          .replace("…", "...")
-         .encode("latin1", errors="replace")  # replaces unencodable chars with '?'
+         .encode("latin1", errors="replace")  # '?' for unencodable chars
          .decode("latin1")
     )
 
-def safe_multicell(pdf, text, w=0, h=6, max_chars=100):
+def safe_multicell(pdf, text: str, w=None, h=6, max_chars=120, align="L"):
+    """Safe wrapper for FPDF.multi_cell with width handling + wrapping."""
     txt = safe_text(text)
-    if w == 0:
-        w = pdf.w - pdf.l_margin - pdf.r_margin
-    for line in txt.split("\n"):
-        for chunk in textwrap.wrap(line, max_chars, break_long_words=True, replace_whitespace=False):
-            while len(chunk) > 0:
-                pdf.multi_cell(w, h, chunk[:max_chars])
-                chunk = chunk[max_chars:]
 
-# ---------- Example Usage ----------
-# txt = "Very long text that might break FPDF rendering if not split properly..."
-# safe_multicell(pdf, txt)
+    if w is None:  # default width = page minus margins
+        w = pdf.w - pdf.l_margin - pdf.r_margin
+
+    for line in txt.split("\n"):
+        for chunk in textwrap.wrap(line, max_chars, break_long_words=True):
+            pdf.multi_cell(w, h, chunk, align=align)
 
 def save_excel(df, filename="parsed_financial_data.xlsx"):
     with io.BytesIO() as buffer:
@@ -50,37 +50,27 @@ def save_excel(df, filename="parsed_financial_data.xlsx"):
 
 def download_link(byte_data, filename, label="Download"):
     b64 = base64.b64encode(byte_data).decode()
-    href = f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">{label}</a>'
-    return href
+    return f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">{label}</a>'
 
 def generate_parsed_financials(uploaded_files):
-    # Create a mocked parsed_financial_data.xlsx based on uploaded files
-    revenue = random.randint(200000, 3000000)
+    """Mock parsed financials generator."""
+    revenue = random.randint(200_000, 3_000_000)
     cogs = int(revenue * random.uniform(0.2, 0.6))
     expenses = int(revenue * random.uniform(0.1, 0.3))
     net_income = revenue - cogs - expenses
     sde = net_income + int(expenses * 0.25)  # simplified add-backs
-    df = pd.DataFrame([{
-        "Metric": "TTM Revenue",
-        "Value": revenue
-    }, {
-        "Metric": "COGS",
-        "Value": cogs
-    }, {
-        "Metric": "Operating Expenses",
-        "Value": expenses
-    }, {
-        "Metric": "Net Income",
-        "Value": net_income
-    }, {
-        "Metric": "SDE (est)",
-        "Value": sde
-    }])
+    df = pd.DataFrame([
+        {"Metric": "TTM Revenue", "Value": revenue},
+        {"Metric": "COGS", "Value": cogs},
+        {"Metric": "Operating Expenses", "Value": expenses},
+        {"Metric": "Net Income", "Value": net_income},
+        {"Metric": "SDE (est)", "Value": sde},
+    ])
     return df
 
 def generate_questions(parsed_preview):
-    # Mocked smart Q&A generator
-    q = [
+    """Mocked smart Q&A generator."""
+    return [
         "Provide explanation for revenue seasonality (if any).",
         "List one-time expenses in the last 12 months.",
         "Explain related-party transactions (if any).",
@@ -88,115 +78,133 @@ def generate_questions(parsed_preview):
         "List major customer concentrations (>10% of revenue).",
         "Provide typical gross margin by service/product line."
     ]
-    return q
 
 def compute_valuation_models(financials_dict):
+    """Simple valuation mock."""
     revenue = financials_dict.get("TTM Revenue", 0)
     net_income = financials_dict.get("Net Income", 0)
     sde = financials_dict.get("SDE (est)", 0)
+
     BE = revenue * 0.8
     APEEV = max((sde * 4) + financials_dict.get("Assets", 0), BE * 0.6)
     IVB = net_income * 6
     CMA = revenue * random.uniform(0.6, 1.2)
+
     return {"BE": BE, "APEEV": APEEV, "IVB": IVB, "CMA": CMA}
 
 def format_usd(x):
     try:
         return f"${int(x):,}"
-    except:
+    except Exception:
         return f"${x}"
 
 def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
+
+    page_width = pdf.w - pdf.l_margin - pdf.r_margin
+
+    # Title
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 8, safe_text("Final Valuation Report"), ln=True)
+    safe_multicell(pdf, "Final Valuation Report", w=page_width, h=8)
     pdf.set_font("Arial", size=10)
     pdf.ln(4)
-    pdf.cell(0, 6, safe_text(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"), ln=True)
+    safe_multicell(pdf, f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}", w=page_width)
     pdf.ln(6)
+
+    # Business Summary
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, safe_text("Business Summary"), ln=True)
+    safe_multicell(pdf, "Business Summary", w=page_width)
     pdf.set_font("Arial", size=10)
-    safe_multicell(pdf, f"Business Name: {context.get('business_name','N/A')}")
-    safe_multicell(pdf, f"Primary Contact: {context.get('seller_contact','N/A')}")
+    safe_multicell(pdf, f"Business Name: {context.get('business_name','N/A')}", w=page_width)
+    safe_multicell(pdf, f"Primary Contact: {context.get('seller_contact','N/A')}", w=page_width)
     pdf.ln(4)
+
+    # Primary Data
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, safe_text("Primary Data"), ln=True)
+    safe_multicell(pdf, "Primary Data", w=page_width)
     pdf.set_font("Arial", size=10)
-    for k,v in context.get("primary_data", {}).items():
-        pdf.cell(0,6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
+    for k, v in context.get("primary_data", {}).items():
+        safe_multicell(pdf, f"{k}: {format_usd(v)}", w=page_width)
     pdf.ln(4)
+
+    # Valuation Summary
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0,6, safe_text("Valuation Models Summary"), ln=True)
+    safe_multicell(pdf, "Valuation Models Summary", w=page_width)
     pdf.set_font("Arial", size=10)
-    for k,v in context.get("valuations", {}).items():
-        pdf.cell(0,6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
+    for k, v in context.get("valuations", {}).items():
+        safe_multicell(pdf, f"{k}: {format_usd(v)}", w=page_width)
     pdf.ln(6)
+
+    # Notes
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0,6, safe_text("Recommended Value & Notes"), ln=True)
+    safe_multicell(pdf, "Recommended Value & Notes", w=page_width)
     pdf.set_font("Arial", size=10)
-    safe_multicell(pdf, context.get("notes","No notes"))
+    notes = context.get("notes", "No notes")
+    safe_multicell(pdf, notes, w=page_width)
+
     return pdf.output(dest="S").encode("latin1")
 
 def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
-    # Multi-page CIM-style teaser (mock)
+    """Multi-page CIM-style teaser (mock)."""
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=12)
+    page_width = pdf.w - pdf.l_margin - pdf.r_margin
 
-    # Cover / Teaser page
+    # Cover
     pdf.add_page()
     pdf.set_font("Arial", "B", 22)
-    pdf.cell(0, 12, safe_text(f"{context.get('business_name','Company')} — Teaser"), ln=True, align="C")
+    safe_multicell(pdf, f"{context.get('business_name','Company')} — Teaser", w=page_width, h=12, align="C")
     pdf.ln(6)
     pdf.set_font("Arial", size=12)
-    safe_multicell(pdf, context.get("one_liner","Confidential business opportunity — summary below."))
+    safe_multicell(pdf, context.get("one_liner","Confidential business opportunity — summary below."), w=page_width)
     pdf.ln(6)
-    pdf.cell(0, 6, safe_text(f"Location: {context.get('location','N/A')}"), ln=True)
-    pdf.cell(0, 6, safe_text(f"Industry: {context.get('industry','N/A')}"), ln=True)
-    pdf.cell(0, 6, safe_text(f"Est. Revenue (TTM): {format_usd(context.get('primary_data',{}).get('TTM Revenue',0))}"), ln=True)
+    safe_multicell(pdf, f"Location: {context.get('location','N/A')}", w=page_width)
+    safe_multicell(pdf, f"Industry: {context.get('industry','N/A')}", w=page_width)
+    revenue = context.get("primary_data", {}).get("TTM Revenue", 0)
+    safe_multicell(pdf, f"Est. Revenue (TTM): {format_usd(revenue)}", w=page_width)
 
     # Financial snapshot
     pdf.add_page()
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 8, safe_text("Financial Snapshot"), ln=True)
+    safe_multicell(pdf, "Financial Snapshot", w=page_width, h=8)
     pdf.set_font("Arial", size=11)
-    for k,v in context.get("primary_data", {}).items():
-        pdf.cell(0,6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
+    for k, v in context.get("primary_data", {}).items():
+        safe_multicell(pdf, f"{k}: {format_usd(v)}", w=page_width)
 
     # Highlights
     pdf.ln(4)
-    pdf.set_font("Arial","B",12)
-    pdf.cell(0,6,safe_text("Investment Highlights"), ln=True)
+    pdf.set_font("Arial", "B", 12)
+    safe_multicell(pdf, "Investment Highlights", w=page_width)
     pdf.set_font("Arial", size=11)
     for h in context.get("highlights", ["Recurring revenue", "Strong margins", "Scalable operations"]):
-       safe_multicell(pdf, f"- {h}")
+        safe_multicell(pdf, f"- {h}", w=page_width)
 
     # Market & comps summary
     pdf.add_page()
-    pdf.set_font("Arial","B",14)
-    pdf.cell(0,8,safe_text("Market Overview & Comps"), ln=True)
+    pdf.set_font("Arial", "B", 14)
+    safe_multicell(pdf, "Market Overview & Comps", w=page_width, h=8)
     pdf.set_font("Arial", size=11)
     mr = context.get("market_research", {})
-    safe_multicell(pdf, f"Industry multiples: {mr.get('Industry_multiples',{})}")
+    safe_multicell(pdf, f"Industry multiples: {mr.get('Industry_multiples',{})}", w=page_width)
     comps = mr.get("RealEstate_comps", [])
-    pdf.ln(2)
     if comps:
-        pdf.set_font("Arial","B",12)
-        pdf.cell(0,6,safe_text("Comps (mock):"), ln=True)
+        pdf.ln(2)
+        pdf.set_font("Arial", "B", 12)
+        safe_multicell(pdf, "Comps (mock):", w=page_width)
         pdf.set_font("Arial", size=11)
         for c in comps:
-            pdf.cell(0,6, safe_text(f"{c.get('address','N/A')} - {format_usd(c.get('value',0))}"), ln=True)
+            safe_multicell(pdf, f"{c.get('address','N/A')} - {format_usd(c.get('value',0))}", w=page_width)
 
-    # Buyer fit and contact
+    # Buyer fit
     pdf.add_page()
-    pdf.set_font("Arial","B",14)
-    pdf.cell(0,8,safe_text("Buyer Fit / Next Steps"), ln=True)
+    pdf.set_font("Arial", "B", 14)
+    safe_multicell(pdf, "Buyer Fit / Next Steps", w=page_width, h=8)
     pdf.set_font("Arial", size=11)
-    safe_multicell(pdf, "This teaser is intended for qualified buyers only. Contact broker to receive full CIM and data room access.")
+    safe_multicell(pdf, "This teaser is intended for qualified buyers only. Contact broker to receive full CIM and data room access.", w=page_width)
     pdf.ln(4)
-    pdf.cell(0,6, safe_text(f"Broker Contact: {context.get('broker_contact','broker@example.com')}"), ln=True)
+    safe_multicell(pdf, f"Broker Contact: {context.get('broker_contact','broker@example.com')}", w=page_width)
 
     return pdf.output(dest="S").encode("latin1")
 
