@@ -92,43 +92,39 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 8, safe_text("Final Valuation Report"), ln=True)
+    pdf.cell(0, 8, "Final Valuation Report", ln=True)
     pdf.set_font("Arial", size=10)
     pdf.ln(4)
-    pdf.cell(0, 6, safe_text(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"), ln=True)
+    pdf.cell(0, 6, f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}", ln=True)
     pdf.ln(6)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, safe_text("Business Summary"), ln=True)
+    pdf.cell(0, 6, "Business Summary", ln=True)
     pdf.set_font("Arial", size=10)
     
-    # Use cell() for single lines
-    pdf.cell(0, 6, safe_text(f"Business Name: {context.get('business_name','N/A')}"), ln=True)
-    pdf.cell(0, 6, safe_text(f"Primary Contact: {context.get('seller_contact','N/A')}"), ln=True)
+    pdf.cell(0, 6, f"Business Name: {context.get('business_name','N/A')}", ln=True)
+    pdf.cell(0, 6, f"Primary Contact: {context.get('seller_contact','N/A')}", ln=True)
     
     pdf.ln(4)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, safe_text("Primary Data"), ln=True)
+    pdf.cell(0, 6, "Primary Data", ln=True)
     pdf.set_font("Arial", size=10)
     for k, v in context.get("primary_data", {}).items():
-        pdf.cell(0, 6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
+        pdf.cell(0, 6, f"{k}: {format_usd(v)}", ln=True)
     pdf.ln(4)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, safe_text("Valuation Models Summary"), ln=True)
+    pdf.cell(0, 6, "Valuation Models Summary", ln=True)
     pdf.set_font("Arial", size=10)
     for k, v in context.get("valuations", {}).items():
-        pdf.cell(0, 6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
+        pdf.cell(0, 6, f"{k}: {format_usd(v)}", ln=True)
     pdf.ln(6)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, safe_text("Recommended Value & Notes"), ln=True)
+    pdf.cell(0, 6, "Recommended Value & Notes", ln=True)
     pdf.set_font("Arial", size=10)
     
-    # Only use multi_cell for potentially long text (notes)
     notes = context.get("notes", "No notes")
-    pdf.multi_cell(0, 6, safe_text(notes))
+    pdf.multi_cell(0, 6, notes)
     
-    # FIX: Remove .encode("latin1") since output() already returns bytes
     return pdf.output(dest="S")
-
 
 def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
     pdf = FPDF()
@@ -136,68 +132,35 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
 
     # Cover / Teaser page
     pdf.add_page()
-    pdf.set_font("Arial", "B", 22)
-    pdf.cell(0, 12, safe_text(f"{context.get('business_name','Company')} — Teaser"), ln=True, align="C")
-    pdf.ln(6)
+    pdf.set_font("Arial", "B", 16)  # Reduced font size
+    pdf.cell(0, 10, f"{context.get('business_name','Company')} — Teaser", ln=True, align="C")
+    pdf.ln(4)
     
-    # Use multi_cell for potentially long text
     one_liner = context.get("one_liner", "Confidential business opportunity — summary below.")
-    pdf.multi_cell(0, 8, safe_text(one_liner))
+    pdf.set_font("Arial", size=10)
+    pdf.multi_cell(0, 6, one_liner)
     
-    pdf.ln(6)
-    pdf.cell(0, 6, safe_text(f"Location: {context.get('location','N/A')}"), ln=True)
-    pdf.cell(0, 6, safe_text(f"Industry: {context.get('industry','N/A')}"), ln=True)
-    pdf.cell(0, 6, safe_text(f"Est. Revenue (TTM): {format_usd(context.get('primary_data',{}).get('TTM Revenue',0))}"), ln=True)
+    pdf.ln(4)
+    pdf.cell(0, 6, f"Location: {context.get('location','N/A')}", ln=True)
+    pdf.cell(0, 6, f"Industry: {context.get('industry','N/A')}", ln=True)
+    pdf.cell(0, 6, f"Est. Revenue (TTM): {format_usd(context.get('primary_data',{}).get('TTM Revenue',0))}", ln=True)
 
     # Financial snapshot
     pdf.add_page()
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 8, safe_text("Financial Snapshot"), ln=True)
-    pdf.set_font("Arial", size=11)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "Financial Snapshot", ln=True)
+    pdf.set_font("Arial", size=10)
     for k, v in context.get("primary_data", {}).items():
-        pdf.cell(0, 6, safe_text(f"{k}: {format_usd(v)}"), ln=True)
+        pdf.cell(0, 6, f"{k}: {format_usd(v)}", ln=True)
 
     # Highlights
     pdf.ln(4)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 6, safe_text("Investment Highlights"), ln=True)
-    pdf.set_font("Arial", size=11)
+    pdf.cell(0, 6, "Investment Highlights", ln=True)
+    pdf.set_font("Arial", size=10)
     for h in context.get("highlights", ["Recurring revenue", "Strong margins", "Scalable operations"]):
-        pdf.multi_cell(0, 6, safe_text(f"- {h}"))
+        pdf.multi_cell(0, 6, f"- {h}")
 
-    # Market & comps summary
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 8, safe_text("Market Overview & Comps"), ln=True)
-    pdf.set_font("Arial", size=11)
-    mr = context.get("market_research", {})
-    
-    industry_text = f"Industry multiples: {mr.get('Industry_multiples', {})}"
-    pdf.multi_cell(0, 6, safe_text(industry_text))
-    
-    comps = mr.get("RealEstate_comps", [])
-    pdf.ln(2)
-    if comps:
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 6, safe_text("Comps (mock):"), ln=True)
-        pdf.set_font("Arial", size=11)
-        for c in comps:
-            comp_text = f"{c.get('address','N/A')} - {format_usd(c.get('value',0))}"
-            pdf.cell(0, 6, safe_text(comp_text), ln=True)
-
-    # Buyer fit and contact
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 8, safe_text("Buyer Fit / Next Steps"), ln=True)
-    pdf.set_font("Arial", size=11)
-    
-    disclaimer = "This teaser is intended for qualified buyers only. Contact broker to receive full CIM and data room access."
-    pdf.multi_cell(0, 6, safe_text(disclaimer))
-    
-    pdf.ln(4)
-    pdf.cell(0, 6, safe_text(f"Broker Contact: {context.get('broker_contact','broker@example.com')}"), ln=True)
-
-    # FIX: Remove .encode("latin1") since output() already returns bytes
     return pdf.output(dest="S")
 
 # ---------- App state init ----------
@@ -299,12 +262,14 @@ with col1:
             if st.button("Export Questions (PDF)"):
                 pdf = FPDF()
                 pdf.add_page()
-                pdf.set_font("Arial", size=12)
-                pdf.cell(0,6, "Seller Q&A", ln=True)
+                pdf.set_font("Arial", size=10)  # Reduced font size
+                pdf.cell(0, 6, "Seller Q&A", ln=True)
                 pdf.ln(4)
                 for i,q in enumerate(qs):
-                    pdf.multi_cell(0,6, safe_text(f"Q{i+1}. {q}"))
-                pdf_bytes = pdf.output(dest="S").encode("latin1")
+                    # FIXED: Use multi_cell with proper width
+                    pdf.multi_cell(180, 6, f"Q{i+1}. {q}")  # Specify width instead of 0
+                    pdf.ln(2)
+                pdf_bytes = pdf.output(dest="S")
                 st.markdown(download_link(pdf_bytes, "general_questions.pdf", "Download general_questions.pdf"), unsafe_allow_html=True)
 
     # ---------------- STEP 4: Upload Answers from Seller ----------------
@@ -487,13 +452,14 @@ if view == "BrokerIQ Dashboard":
     if st.button("Export Portfolio Report (Demo)"):
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial","B",14)
+        pdf.set_font("Arial","B",12)
         pdf.cell(0,6,"BrokerIQ Portfolio Report (Demo)", ln=True)
         pdf.ln(4)
         for i,r in demo_deals.iterrows():
-            pdf.set_font("Arial","",11)
-            pdf.multi_cell(0,6, safe_text(f"{r['Business']} — Valuation: ${int(r['Valuation']):,} — Status: {r['Status']} — Matched Buyers: {r['Matched Buyers']}"))
-        st.markdown(download_link(pdf.output(dest="S").encode("latin1"), "BrokerIQ_Portfolio_Report.pdf", "Download Portfolio Report"), unsafe_allow_html=True)
+            pdf.set_font("Arial","",10)
+            pdf.multi_cell(180, 6, f"{r['Business']} — Valuation: ${int(r['Valuation']):,} — Status: {r['Status']} — Matched Buyers: {r['Matched Buyers']}")
+        pdf_bytes = pdf.output(dest="S")
+        st.markdown(download_link(pdf_bytes, "BrokerIQ_Portfolio_Report.pdf", "Download Portfolio Report"), unsafe_allow_html=True)
 
 elif view == "DealReady (SMB)":
     st.header("DealReady — SMB Owner Tool (Demo)")
