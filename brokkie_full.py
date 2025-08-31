@@ -12,6 +12,7 @@ import textwrap
 st.set_page_config(page_title="Brokkie - Full 12-step Valuation Prototype", layout="wide")
 
 # ---------- Helpers ----------
+
 def safe_text(s: str) -> str:
     """Clean problematic Unicode for FPDF (latin1 only)."""
     if not s:
@@ -28,7 +29,7 @@ def safe_text(s: str) -> str:
     )
 
 def safe_multicell(pdf, text: str, w=None, h=6, max_chars=120, align="L"):
-    """Safe wrapper for FPDF.multi_cell with wrapping."""
+    """Safe wrapper for FPDF.multi_cell with width handling + wrapping."""
     txt = safe_text(text)
     if w is None:
         w = pdf.w - pdf.l_margin - pdf.r_margin
@@ -40,13 +41,15 @@ def save_excel(df, filename="parsed_financial_data.xlsx"):
     with io.BytesIO() as buffer:
         with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
             df.to_excel(writer, index=False, sheet_name="Financials")
-        return buffer.getvalue()
+        data = buffer.getvalue()
+    return data
 
 def download_link(byte_data, filename, label="Download"):
     b64 = base64.b64encode(byte_data).decode()
     return f'<a href="data:application/octet-stream;base64,{b64}" download="{filename}">{label}</a>'
 
 def generate_parsed_financials(uploaded_files):
+    """Mock parsed financials generator."""
     revenue = random.randint(200_000, 3_000_000)
     cogs = int(revenue * random.uniform(0.2, 0.6))
     expenses = int(revenue * random.uniform(0.1, 0.3))
@@ -62,6 +65,7 @@ def generate_parsed_financials(uploaded_files):
     return df
 
 def generate_questions(parsed_preview):
+    """Mock Q&A generator."""
     return [
         "Provide explanation for revenue seasonality (if any).",
         "List one-time expenses in the last 12 months.",
@@ -76,7 +80,6 @@ def compute_valuation_models(financials_dict):
     net_income = financials_dict.get("Net Income", 0)
     sde = financials_dict.get("SDE (est)", 0)
     assets = financials_dict.get("Assets", 0)
-
     BE = revenue * 0.8
     APEEV = max((sde * 4) + assets, BE * 0.6)
     IVB = net_income * 6
@@ -99,6 +102,7 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     pdf.set_font("Arial", "B", 16)
     safe_multicell(pdf, "Final Valuation Report", w=page_width, h=8)
     pdf.set_font("Arial", size=10)
+    pdf.ln(4)
     safe_multicell(pdf, f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}", w=page_width)
     pdf.ln(6)
 
@@ -115,10 +119,7 @@ def generate_final_pdf(context, filename="Final_Valuation_Report.pdf"):
     safe_multicell(pdf, "Primary Data", w=page_width)
     pdf.set_font("Arial", size=10)
     for k, v in context.get("primary_data", {}).items():
-        if isinstance(v, (int,float)):
-            safe_multicell(pdf, f"{k}: {format_usd(v)}", w=page_width)
-        else:
-            safe_multicell(pdf, f"{k}: {v}", w=page_width)
+        safe_multicell(pdf, f"{k}: {format_usd(v)}", w=page_width)
     pdf.ln(4)
 
     # Valuation Summary
@@ -205,31 +206,19 @@ def generate_cim_pdf(context, filename="CIM_Teaser.pdf"):
         out = out.encode("latin1")
     return out
 
-# ---------- App state init ----------
-if "step" not in st.session_state:
-    st.session_state.step = 1
-if "uploaded_files" not in st.session_state:
-    st.session_state.uploaded_files = []
-if "parsed_df" not in st.session_state:
-    st.session_state.parsed_df = None
-if "questions" not in st.session_state:
-    st.session_state.questions = []
-if "answers" not in st.session_state:
-    st.session_state.answers = {}
-if "assets" not in st.session_state:
-    st.session_state.assets = {}
-if "market_research" not in st.session_state:
-    st.session_state.market_research = None
-if "valuations" not in st.session_state:
-    st.session_state.valuations = {}
+# ---------- App State Init ----------
+for key in ["step","uploaded_files","parsed_df","questions","answers","assets","market_research","valuations"]:
+    if key not in st.session_state:
+        st.session_state[key] = {} if key in ["answers","assets","valuations"] else None
+if "step" not in st.session_state: st.session_state.step = 1
 if "business_meta" not in st.session_state:
     st.session_state.business_meta = {"name":"Demo Business", "location":"Seattle, WA", "industry":"Service"}
 
 # ---------- Layout ----------
 st.title("Brokkie — 12-Step Valuation Workflow Prototype")
-st.markdown("**Simulated / demo** — visual and operational prototype to showcase the future tool's power.")
+st.markdown("**Simulated / demo** — visual and operational prototype.")
 
-# Global top progress bar (12 steps)
+# Top progress bar
 progress_pct = int((st.session_state.step - 1) / 11 * 100)
 st.progress(progress_pct)
 st.markdown(f"**Step {st.session_state.step} of 12**")
@@ -240,7 +229,6 @@ with col2:
         st.session_state.step -= 1
     if st.button("Next Step") and st.session_state.step < 12:
         st.session_state.step += 1
-
     st.markdown("---")
     st.markdown("Quick Nav")
     for i in range(1,13):
@@ -250,14 +238,12 @@ with col2:
 with col1:
     step = st.session_state.step
 
-    # ---------------- STEP 1: Upload Source Documents ----------------
+    # ---------------- STEP 1 ----------------
     if step == 1:
         st.header("Step 1 — Upload Source Documents")
-        st.info("Required: Tax Returns, Profit & Loss (TTM/YTD), Monthly DORs. Upload any files to simulate parsing.")
         uploaded = st.file_uploader("Upload supporting documents (multiple)", accept_multiple_files=True)
         if uploaded:
             st.session_state.uploaded_files = uploaded
-            st.success(f"{len(uploaded)} files uploaded.")
             parsed = generate_parsed_financials(uploaded)
             st.session_state.parsed_df = parsed
             excel_bytes = save_excel(parsed)
@@ -265,83 +251,75 @@ with col1:
             st.markdown(download_link(excel_bytes, "parsed_financial_data.xlsx", "Download parsed_financial_data.xlsx"), unsafe_allow_html=True)
             st.dataframe(parsed)
 
-    # ---------------- STEP 2: Confirm / Correct Primary Data ----------------
+    # ---------------- STEP 2 ----------------
     elif step == 2:
         st.header("Step 2 — Confirm / Correct Primary Data")
         if st.session_state.parsed_df is None:
-            st.warning("No parsed data yet. Please complete Step 1 first (upload documents).")
+            st.warning("Upload Step 1 first.")
         else:
-            st.write("Preview parsed financials:")
             df = st.session_state.parsed_df.copy()
             edited = st.data_editor(df, num_rows="dynamic")
             if st.button("Save Confirmed Data"):
                 st.session_state.parsed_df = edited
-                st.success("Primary data confirmed and saved.")
                 d = {r.Metric: int(r.Value) for r in edited.itertuples()}
                 st.session_state.primary_data = d
+                st.success("Primary data confirmed.")
 
-    # ---------------- STEP 3: Generate Q&A for Seller ----------------
+    # ---------------- STEP 3 ----------------
     elif step == 3:
         st.header("Step 3 — Generate Q&A for Seller")
         if st.session_state.parsed_df is None:
-            st.warning("Please upload parsed financials in Step 1.")
+            st.warning("Upload Step 1 first.")
         else:
-            st.write("Auto-generating Q&A based on parsed data...")
             qs = generate_questions(st.session_state.parsed_df)
             st.session_state.questions = qs
             for i,q in enumerate(qs):
-                st.markdown(f"**Q{i+1}.** {q}")
-            if st.button("Export Questions (PDF)"):
+                st.text_area(f"Q{i+1}: {q}", key=f"q{i}")
+            if st.button("Export Questions PDF"):
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font("Arial", size=12)
-                pdf.cell(0,6, "Seller Q&A", ln=True)
-                pdf.ln(4)
                 for i,q in enumerate(qs):
-                   safe_multicell(pdf, f"Q{i+1}. {q}")
+                    safe_multicell(pdf, f"Q{i+1}. {q}")
                 pdf_bytes = pdf.output(dest="S").encode("latin1")
-                st.markdown(download_link(pdf_bytes, "general_questions.pdf", "Download general_questions.pdf"), unsafe_allow_html=True)
+                st.markdown(download_link(pdf_bytes, "general_questions.pdf", "Download Questions PDF"), unsafe_allow_html=True)
 
-    # ---------------- STEP 4: Upload Answers from Seller ----------------
+    # ---------------- STEP 4 ----------------
     elif step == 4:
-        st.header("Step 4 — Upload Seller Answers / Fill Q&A")
-        st.write("Paste answers or upload a text file containing answers.")
-        for i,q in enumerate(st.session_state.questions):
-            ans = st.text_area(f"Answer to Q{i+1}", key=f"ans_{i}", placeholder="Type seller's answer or paste content here")
+        st.header("Step 4 — Upload Answers / Fill Q&A")
+        for i,q in enumerate(st.session_state.questions or []):
+            ans = st.text_area(f"Answer to Q{i+1}", key=f"ans_{i}", placeholder="Type seller's answer here")
             st.session_state.answers[f"Q{i+1}"] = ans
         if st.button("Save Answers"):
-            st.success("Saved seller answers.")
+            st.success("Seller answers saved.")
 
-    # ---------------- STEP 5: Excel Tables Adjustment (Manual) ----------------
+    # ---------------- STEP 5 ----------------
     elif step == 5:
-        st.header("Step 5 — Excel Tables Adjustment (Manual)")
-        st.info("Download parsed Excel, edit offline, and re-upload if needed.")
-        if "parsed_xlsx" in st.session_state:
-            st.markdown(download_link(st.session_state.parsed_xlsx, "parsed_financial_data.xlsx", "Download parsed_financial_data.xlsx"), unsafe_allow_html=True)
-        uploaded_fix = st.file_uploader("Upload corrected Excel (optional)", type=["xlsx"])
+        st.header("Step 5 — Excel Tables Adjustment")
+        st.info("Download, edit offline, re-upload if needed.")
+        if st.session_state.parsed_xlsx:
+            st.markdown(download_link(st.session_state.parsed_xlsx, "parsed_financial_data.xlsx", "Download Parsed Excel"), unsafe_allow_html=True)
+        uploaded_fix = st.file_uploader("Upload corrected Excel", type=["xlsx"])
         if uploaded_fix:
             try:
                 df_fix = pd.read_excel(uploaded_fix)
                 st.session_state.parsed_df = df_fix
-                st.success("Corrected Excel uploaded and accepted.")
-            except Exception as e:
-                st.error("Could not read uploaded file. Make sure it's a valid XLSX.")
+                st.success("Corrected Excel uploaded.")
+            except Exception:
+                st.error("Invalid XLSX.")
 
-    # ---------------- STEP 6: Upload FFE / Inventory / Real Estate ----------------
+    # ---------------- STEP 6 ----------------
     elif step == 6:
-        st.header("Step 6 — Upload FFE / Inventory / Real Estate Docs")
-        st.info("Upload photos or documents for Furniture, Fixtures & Equipment, Inventory listing, Real Estate docs.")
-        ffe_files = st.file_uploader("FFE / Inventory / Real Estate files (multiple)", accept_multiple_files=True, key="ffe")
+        st.header("Step 6 — Upload FFE / Inventory / Real Estate")
+        ffe_files = st.file_uploader("FFE / Inventory / RE files", accept_multiple_files=True, key="ffe")
         if ffe_files:
             st.session_state.assets['ffe'] = [f.name for f in ffe_files]
-            st.success(f"Uploaded {len(ffe_files)} asset files.")
-            st.write(st.session_state.assets['ffe'])
+            st.success(f"{len(ffe_files)} files uploaded.")
 
-    # ---------------- STEP 7: Confirm / Correct Asset Inputs ----------------
+    # ---------------- STEP 7 ----------------
     elif step == 7:
         st.header("Step 7 — Confirm / Correct Asset Inputs")
-        st.write("Review extracted asset info (mocked).")
-        default_assets = {"Furniture & Fixtures": 20000, "Inventory Value": 15000, "Real Estate (land+building)": 350000}
+        default_assets = {"Furniture & Fixtures": 20000, "Inventory Value": 15000, "Real Estate": 350000}
         if st.button("Load Mock Asset Extraction"):
             st.session_state.assets['extracted'] = default_assets
         if 'extracted' in st.session_state.assets:
@@ -349,178 +327,110 @@ with col1:
             edited_assets = st.data_editor(df_assets, num_rows="dynamic")
             if st.button("Save Asset Confirmations"):
                 st.session_state.assets['confirmed'] = {r.Asset: int(r.Value) for r in edited_assets.itertuples()}
-                st.success("Asset inputs confirmed.")
+                st.success("Assets confirmed.")
 
-    # ---------------- STEP 8: Market Research ----------------
+    # ---------------- STEP 8 ----------------
     elif step == 8:
         st.header("Step 8 — Market Research")
-        st.info("Run automated (mock) research for FFE, Real Estate comps, and Industry CMAs.")
         if st.button("Start Mock Market Research"):
             research = {
                 "FFE_avg": 18000,
-                "RealEstate_comps": [{"address":"123 Main", "value": 360000}, {"address":"456 Oak", "value": 340000}],
-                "Industry_multiples": {"median_rev_multiple": 0.9, "median_sde_multiple": 3.5}
+                "RealEstate_comps":[{"address":"123 Main", "value":360000},{"address":"456 Oak","value":340000}],
+                "Industry_multiples":{"median_rev_multiple":0.9,"median_sde_multiple":3.5}
             }
             st.session_state.market_research = research
-            st.success("Market research completed (mock).")
+            st.success("Market research completed.")
         if st.session_state.market_research:
             st.write(st.session_state.market_research)
 
-    # ---------------- STEP 9: Inventory ----------------
+    # ---------------- STEP 9 ----------------
     elif step == 9:
         st.header("Step 9 — Inventory Upload")
-        inv_file = st.file_uploader("Upload inventory CSV or XLSX (optional)", type=["csv","xlsx"])
+        inv_file = st.file_uploader("Upload inventory CSV/XLSX", type=["csv","xlsx"])
         if inv_file:
             try:
-                if inv_file.type == "text/csv":
-                    inv = pd.read_csv(inv_file)
-                else:
-                    inv = pd.read_excel(inv_file)
+                inv = pd.read_csv(inv_file) if inv_file.type=="text/csv" else pd.read_excel(inv_file)
                 st.session_state.inventory = inv
                 st.success("Inventory uploaded.")
                 st.dataframe(inv.head())
-            except Exception as e:
-                st.error("Could not parse inventory file.")
+            except Exception:
+                st.error("Could not parse file.")
 
-    # ---------------- STEP 10: Real Estate ----------------
+    # ---------------- STEP 10 ----------------
     elif step == 10:
         st.header("Step 10 — Real Estate Upload")
-        re_file = st.file_uploader("Upload property docs (deeds, appraisal) (optional)", accept_multiple_files=True)
+        re_file = st.file_uploader("Upload property docs", accept_multiple_files=True)
         if re_file:
             st.session_state.real_estate_files = [f.name for f in re_file]
             st.success("Real estate docs uploaded.")
-            st.write(st.session_state.real_estate_files)
 
-    # ---------------- STEP 11: Asset Data Preview ----------------
+    # ---------------- STEP 11 ----------------
     elif step == 11:
         st.header("Step 11 — Asset Data Preview")
-        st.write("Consolidated preview of asset extraction results.")
-        primary = st.session_state.get("primary_data", {})
-        assets_confirmed = st.session_state.assets.get("confirmed", {})
-        market = st.session_state.market_research or {}
         st.subheader("Primary Financials")
-        st.write(primary)
+        st.write(st.session_state.get("primary_data", {}))
         st.subheader("Assets Confirmed")
-        st.write(assets_confirmed)
-        st.subheader("Market Research Summary")
-        st.write(market)
-        if st.button("Generate Mock Teaser / CIM (Teaser PDF)"):
+        st.write(st.session_state.assets.get("confirmed", {}))
+        st.subheader("Market Research")
+        st.write(st.session_state.market_research or {})
+        if st.button("Generate CIM / Teaser PDF"):
             ctx = {
                 "business_name": st.session_state.business_meta.get("name","Demo Business"),
                 "location": st.session_state.business_meta.get("location","N/A"),
                 "industry": st.session_state.business_meta.get("industry","N/A"),
-                "primary_data": st.session_state.get("primary_data", {}),
-                "market_research": st.session_state.market_research or {},
-                "highlights": ["Recurring contracts", "High margin services", "Low customer churn"],
-                "one_liner": "Confidential business opportunity — summary available upon ND.",
-                "broker_contact": "broker@antlabs.example"
+                "primary_data": st.session_state.get("primary_data",{}),
+                "highlights":["Recurring revenue","Strong gross margins","Scalable ops"],
+                "market_research": st.session_state.get("market_research",{}),
+                "one_liner":"Confidential investment opportunity.",
+                "broker_contact":"broker@example.com"
             }
-            cim_bytes = generate_cim_pdf(ctx)
-            st.markdown(download_link(cim_bytes, "CIM_Teaser.pdf", "Download CIM / Teaser (mock)"), unsafe_allow_html=True)
-            st.success("CIM / Teaser generated (mock).")
+            pdf_bytes = generate_cim_pdf(ctx)
+            st.markdown(download_link(pdf_bytes,"CIM_Teaser.pdf","Download CIM / Teaser PDF"), unsafe_allow_html=True)
 
-    # ---------------- STEP 12: Research Results & Valuation Models ----------------
+    # ---------------- STEP 12 ----------------
     elif step == 12:
-        st.header("Step 12 — Valuation Models & Final Report")
-        st.info("Select valuation models to run, review model outputs, validate and generate final report.")
-        primary = st.session_state.get("primary_data")
-        if not primary:
-            st.warning("Primary financial data is missing. Please confirm parsed data in Step 2.")
-        else:
-            assets_confirmed = st.session_state.assets.get("confirmed", {})
-            primary_with_assets = primary.copy()
-            primary_with_assets.update(assets_confirmed)
-            st.subheader("Valuation Models")
-            run_BE = st.checkbox("Basic Evaluation (BE)", value=True)
-            run_APEEV = st.checkbox("Assets + Excess Earnings (APEEV)", value=True)
-            run_IVB = st.checkbox("Investment Value of Business (IVB)", value=True)
-            run_CMA = st.checkbox("Comparative Market Analysis (CMA)", value=True)
+        st.header("Step 12 — Valuation & Recommendations")
+        if st.button("Compute Valuation Models"):
+            vals = compute_valuation_models(st.session_state.get("primary_data",{}))
+            st.session_state.valuations = vals
+            st.success("Valuations computed.")
+        st.write(st.session_state.valuations or {})
+        if st.button("Generate Final Valuation Report PDF"):
+            ctx = {
+                "business_name": st.session_state.business_meta.get("name","Demo Business"),
+                "seller_contact":"seller@example.com",
+                "primary_data": st.session_state.get("primary_data",{}),
+                "valuations": st.session_state.get("valuations",{}),
+                "notes":"Preliminary recommendation — review with broker."
+            }
+            pdf_bytes = generate_final_pdf(ctx)
+            st.markdown(download_link(pdf_bytes,"Final_Valuation_Report.pdf","Download Final Valuation Report"), unsafe_allow_html=True)
 
-            valuations = compute_valuation_models(primary_with_assets)
-            selected = {}
-            if run_BE: selected['BE'] = valuations['BE']
-            if run_APEEV: selected['APEEV'] = valuations['APEEV']
-            if run_IVB: selected['IVB'] = valuations['IVB']
-            if run_CMA: selected['CMA'] = valuations['CMA']
+# ---------- Sidebar Dashboards ----------
+st.sidebar.header("Analytics Dashboards")
 
-            st.subheader("Model Outputs (mock)")
-            for k,v in selected.items():
-                st.metric(k, format_usd(v))
-
-            st.subheader("Model Validation")
-            adjustments = {}
-            for k,v in selected.items():
-                adj = st.number_input(f"Adjusted {k} value", value=int(v))
-                adjustments[k] = adj
-            if st.button("Confirm Models & Generate Final Report"):
-                context = {
-                    "business_name": st.session_state.business_meta.get("name","Demo Business"),
-                    "seller_contact": st.session_state.business_meta.get("contact","Seller"),
-                    "primary_data": primary_with_assets,
-                    "valuations": adjustments,
-                    "notes": st.text_area("Notes / Recommended Value and rationale", value="Selected recommended value based on weighted median of models.")
-                }
-                pdf_bytes = generate_final_pdf(context)
-                st.session_state.final_pdf = pdf_bytes
-                st.success("Final report generated.")
-                st.markdown(download_link(pdf_bytes, "Final_Valuation_Report.pdf", "Download Final_Valuation_Report.pdf"), unsafe_allow_html=True)
-
-# ---------------- TOP NAV: BrokerIQ Dashboard & DealReady ----------------
-st.sidebar.markdown("---")
-view = st.sidebar.selectbox("Quick View", ["Workflow", "BrokerIQ Dashboard", "DealReady (SMB)"])
-
-if view == "BrokerIQ Dashboard":
-    st.header("BrokerIQ — Dashboard (Demo)")
-    demo_deals = pd.DataFrame([
-        {"Business":"Auto Paving", "Valuation":250000, "Matched Buyers":3, "Status":"Negotiation"},
-        {"Business":"Coffee Chain", "Valuation":120000, "Matched Buyers":0, "Status":"Data Collection"},
-        {"Business":"IT Services", "Valuation":500000, "Matched Buyers":2, "Status":"Marketing"}
+dash_option = st.sidebar.selectbox("Select Dashboard", ["None","BrokerIQ Dashboard","DealReady"])
+if dash_option == "BrokerIQ Dashboard":
+    st.sidebar.markdown("**BrokerIQ Mock Dashboard**")
+    # Mock deals table
+    deals = pd.DataFrame([
+        {"Deal":f"Deal {i+1}","Status":random.choice(["Active","Pending","Closed"]),
+         "Value":random.randint(100_000,2_000_000)} for i in range(10)
     ])
-    st.table(demo_deals)
-    st.subheader("Deal Analytics (mock)")
-    st.line_chart({"Deal Value":[250000,120000,500000],"Matched Buyers":[3,0,2]})
-    if st.button("Export Portfolio Report (Demo)"):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial","B",14)
-        pdf.cell(0,6,"BrokerIQ Portfolio Report (Demo)", ln=True)
-        pdf.ln(4)
-        for i, r in demo_deals.iterrows():
-           pdf.set_font("Arial", "", 11)
-           safe_multicell(
-               pdf,
-               f"{r['Business']} — Valuation: ${int(r['Valuation']):,} — Status: {r['Status']} — Matched Buyers: {r['Matched Buyers']}"
-           )
-        st.markdown(
-            download_link(
-                pdf.output(dest="S").encode("latin1"),
-                "BrokerIQ_Portfolio_Report.pdf",
-                "Download Portfolio Report"
-            ),
-            unsafe_allow_html=True
-        )
+    st.subheader("Deals Overview")
+    st.dataframe(deals)
+    # Charts
+    st.subheader("Deals Value Distribution")
+    st.bar_chart(deals.set_index("Deal")["Value"])
+    st.subheader("Deals by Status")
+    st.bar_chart(deals['Status'].value_counts())
 
-elif view == "DealReady (SMB)":
-    st.header("DealReady — SMB Owner Tool (Demo)")
-    st.write("Enter your business data to get an instant estimate and exit-prep suggestions.")
-    name = st.text_input("Business Name", value="Demo SMB")
-    rev = st.number_input("Annual Revenue ($)", value=300000)
-    profit = st.number_input("Net Profit ($)", value=45000)
-    assets_val = st.number_input("Total Assets ($)", value=20000)
-    if st.button("Estimate Value"):
-        est = int(rev * 0.8 + profit * 3 + assets_val * 0.5)
-        st.metric("Estimated Business Value", f"${est:,}")
-        st.markdown("**Exit Prep Suggestions:**")
-        st.markdown("- Improve recurring revenue share\n- Formalize contracts & processes\n- Clean up one-time expenses and records\n- Prepare professional marketing materials")
-        owner_ctx = {
-            "business_name": name,
-            "primary_data": {"TTM Revenue": rev, "Net Income": profit, "Assets": assets_val},
-            "valuations": {"QuickEstimate": est},
-            "notes": "Owner-facing simplified valuation and exit prep checklist."
-        }
-        pdf_bytes = generate_final_pdf(owner_ctx)
-        st.markdown(download_link(pdf_bytes, f"{name}_DealReady_Report.pdf", "Download Owner Report"), unsafe_allow_html=True)
-
-# Footer quick help
-st.sidebar.markdown("---")
-st.sidebar.markdown("Prototype by Ruslan — Simulated outputs. Connect AI models / parsers to replace mock computations.")
+elif dash_option == "DealReady":
+    st.sidebar.markdown("**DealReady Mock Tool**")
+    st.subheader("DealReady Financial Preview")
+    revenue_input = st.number_input("Enter TTM Revenue", 0, 5_000_000, value=500_000, step=10_000)
+    expenses_input = st.number_input("Operating Expenses", 0, 2_000_000, value=150_000, step=5_000)
+    sde_calc = revenue_input - expenses_input + int(expenses_input*0.25)
+    st.metric("Estimated SDE", f"${sde_calc:,}")
+    st.subheader("DealReady Charts")
+    st.bar_chart(pd.DataFrame({"Revenue":[revenue_input],"Expenses":[expenses_input]}))
